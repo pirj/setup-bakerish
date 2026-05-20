@@ -1,0 +1,181 @@
+name: 'Setup bakeri.sh'
+description: >-
+  Install aq + rlock + bakeri.sh, wire up RLOCK_PLUGIN_PATH, and restore
+  the snapshot layer cache. After this step `bake run -- <cmd>` works in
+  the runner with sub-second warm restores on subsequent runs.
+author: 'pirj'
+branding:
+  icon: 'package'
+  color: 'orange'
+
+inputs:
+  aq-ref:
+    description: 'Git ref of pirj/aq to install (branch / tag / SHA).'
+    required: false
+    default: 'main'
+  rlock-ref:
+    description: 'Git ref of pirj/rlock to install.'
+    required: false
+    default: 'main'
+  bakeri-ref:
+    description: 'Git ref of pirj/bakeri.sh to install.'
+    required: false
+    default: 'main'
+  cache-key-prefix:
+    description: >-
+      Prefix for the actions/cache key. Use to segment caches by purpose
+      (e.g. `bakeri-fast` vs `bakeri-full`) or to invalidate on
+      ecosystem-level config bumps without changing any input file.
+    required: false
+    default: 'bakeri'
+  cache-extra-paths:
+    description: >-
+      Newline-separated extra file globs to hash into the cache key on
+      top of the built-in defaults (bakerish.toml + common lockfiles +
+      db/schema.rb + db/migrate/** + Dockerfile + docker-compose.*).
+      Use when your project has its own cache-invalidating files
+      (custom build configs, generated headers, etc.).
+    required: false
+    default: ''
+  cache-restore-only:
+    description: >-
+      `true` to restore-only (skip the post-job save step). Useful in
+      jobs that don't materially populate new cache layers and where
+      saving would be a write-amp regression. Default is to restore
+      AND save.
+    required: false
+    default: 'false'
+  no-snapshot-compress:
+    description: >-
+      `true` to set AQ_NO_SNAPSHOT_COMPRESS=1 in the environment. Trades
+      ~1.1 GB extra cache per kind=live layer for ~400 ms faster warm
+      restore per `bake run`. Worth it for high-volume CI where warm time
+      multiplies across many invocations; default-off matches aq's
+      default and is the right choice for cache-quota-constrained repos.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install host prereqs (qemu + zstd)
+      shell: bash
+      run: |
+        set -e
+        case "$RUNNER_OS" in
+          Linux)
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends qemu-system-x86 zstd
+            ;;
+          macOS)
+            # GH macos-latest runners have HVF but no qemu pre-installed.
+            # Brew install is slow (~1 min) but cached on subsequent runs.
+            brew install qemu zstd
+            ;;
+          *)
+            echo "Error: unsupported RUNNER_OS=$RUNNER_OS" >&2
+            exit 1
+            ;;
+        esac
+
+    - name: Clone aq / rlock / bakeri.sh at pinned refs
+      shell: bash
+      env:
+        AQ_REF:     ${{ inputs.aq-ref }}
+        RLOCK_REF:  ${{ inputs.rlock-ref }}
+        BAKERI_REF: ${{ inputs.bakeri-ref }}
+      run: |
+        set -e
+        git clone --depth=1 --branch "$AQ_REF"     https://github.com/pirj/aq        "$HOME/aq"
+        git clone --depth=1 --branch "$RLOCK_REF"  https://github.com/pirj/rlock     "$HOME/rlock"
+        git clone --depth=1 --branch "$BAKERI_REF" https://github.com/pirj/bakeri.sh "$HOME/bakeri.sh"
+
+    - name: Wire bakeri.sh / rlock / aq into the runner env
+      shell: bash
+      run: |
+        set -e
+        {
+          echo "$HOME/aq"
+          echo "$HOME/rlock/bin"
+          echo "$HOME/bakeri.sh/bin"
+        } >> "$GITHUB_PATH"
+        echo "RLOCK_PLUGIN_PATH=$HOME/bakeri.sh/plugins" >> "$GITHUB_ENV"
+        if [ "${{ inputs.no-snapshot-compress }}" = "true" ]; then
+          echo "AQ_NO_SNAPSHOT_COMPRESS=1" >> "$GITHUB_ENV"
+        fi
+
+    - name: Compute cache key
+      id: cache-key
+      shell: bash
+      env:
+        PREFIX:      ${{ inputs.cache-key-prefix }}
+        EXTRA_PATHS: ${{ inputs.cache-extra-paths }}
+      run: |
+        set -e
+        # Built-in cache-key-derivation: hash bakerish.toml + the
+        # union of common lockfiles + key_files commonly declared in
+        # [prebuild.*]. Tunable per project via cache-extra-paths.
+        DEFAULT_GLOBS=(
+          'bakerish.toml'
+          '**/Gemfile.lock'
+          '**/package-lock.json'
+          '**/pnpm-lock.yaml'
+          '**/uv.lock'
+          '**/poetry.lock'
+          '**/Cargo.lock'
+          'db/schema.rb'
+          'db/migrate/**'
+          'Dockerfile'
+          'docker-compose.yml'
+          'docker-compose.yaml'
+        )
+        # Append user-supplied extras (one glob per line).
+        if [ -n "$EXTRA_PATHS" ]; then
+          while IFS= read -r line; do
+            [ -n "$line" ] && DEFAULT_GLOBS+=("$line")
+          done <<< "$EXTRA_PATHS"
+        fi
+        # Hash all matching files. Falls back to an empty string when
+        # no files match; the cache key still has the os / prefix so
+        # different runners stay segregated.
+        HASH=$(printf '%s\n' "${DEFAULT_GLOBS[@]}" \
+          | xargs -I {} sh -c "ls -d {} 2>/dev/null || true" \
+          | sort -u \
+          | xargs -r shasum -a 256 \
+          | shasum -a 256 \
+          | awk '{print $1}')
+        echo "key=${PREFIX}-${RUNNER_OS}-${HASH}"          >> "$GITHUB_OUTPUT"
+        echo "restore-keys=${PREFIX}-${RUNNER_OS}-"        >> "$GITHUB_OUTPUT"
+
+    - name: Restore + auto-save bakeri.sh layer cache
+      # actions/cache@v4 (the unified action, not split restore/save)
+      # has a built-in post-job step that saves the cache on job end.
+      # That's what we want — the cache should reflect WHATEVER the
+      # user's subsequent `bake run` steps populated, not the empty
+      # state right after restore. Composite actions can't ship their
+      # own post-step in YAML, so we lean on the upstream action's
+      # post-hook.
+      #
+      # `cache-restore-only=true` switches to actions/cache/restore@v4
+      # (no save) for jobs that explicitly don't want to populate the
+      # cache (e.g. PR builds against ephemeral branches).
+      uses: actions/cache@v4
+      if: inputs.cache-restore-only != 'true'
+      with:
+        path: |
+          ~/.local/share/aq/cache
+          ~/.local/share/aq/x86_64
+          ~/.local/share/aq/aarch64
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: ${{ steps.cache-key.outputs.restore-keys }}
+
+    - name: Restore only (no save) — when cache-restore-only=true
+      uses: actions/cache/restore@v4
+      if: inputs.cache-restore-only == 'true'
+      with:
+        path: |
+          ~/.local/share/aq/cache
+          ~/.local/share/aq/x86_64
+          ~/.local/share/aq/aarch64
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: ${{ steps.cache-key.outputs.restore-keys }}
