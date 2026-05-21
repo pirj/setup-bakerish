@@ -88,6 +88,15 @@ runs:
             if [ -n "$OCI_REF" ]; then
               sudo apt-get install -y --no-install-recommends oras
             fi
+            # GH ubuntu-* runners ship with /dev/kvm but the `runner`
+            # user isn't in the `kvm` group — every QEMU invocation
+            # would die with "/dev/kvm exists but is not accessible".
+            # The canonical fix is the udev rule below, recommended by
+            # the GH-actions-runner-images repo for KVM users.
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+              | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
             ;;
           macOS)
             # GH macos-latest runners have HVF but no qemu pre-installed.
