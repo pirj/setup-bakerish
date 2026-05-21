@@ -128,6 +128,19 @@ runs:
             ;;
         esac
 
+    - name: Ensure an SSH key exists for aq's base-image bootstrap
+      shell: bash
+      run: |
+        # aq's base-build path reads $HOME/.ssh/*.pub and bakes it into
+        # the Alpine ISO's setup.conf as the guest user's
+        # authorized_keys. GH runners ship without ~/.ssh, so generate
+        # an ephemeral ed25519 key if none exists. The key is per-job
+        # (runner is destroyed at job end); not a long-lived secret.
+        if [ ! -d "$HOME/.ssh" ] || ! ls "$HOME/.ssh"/*.pub >/dev/null 2>&1; then
+            mkdir -p "$HOME/.ssh"
+            ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -q
+        fi
+
     - name: Install aq / rlock / bakeri.sh from release tarballs
       shell: bash
       env:
