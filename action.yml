@@ -54,23 +54,40 @@ inputs:
       default and is the right choice for cache-quota-constrained repos.
     required: false
     default: 'false'
+  oci-cache-ref:
+    description: >-
+      Optional OCI ref (e.g. `ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest`)
+      used as a second-tier cache. When set, this step also installs
+      `oras` and — on GH-cache miss — attempts `bake cache --pull
+      <oci-cache-ref>` as a fallback. The push side stays in the
+      user's workflow: see README for the `if: always() && github.ref
+      == 'refs/heads/main'` post-step that calls `bake cache --push`.
+    required: false
+    default: ''
 
 runs:
   using: composite
   steps:
-    - name: Install host prereqs (qemu + zstd)
+    - name: Install host prereqs (qemu + zstd[+ oras if OCI fallback set])
       shell: bash
+      env:
+        OCI_REF: ${{ inputs.oci-cache-ref }}
       run: |
         set -e
         case "$RUNNER_OS" in
           Linux)
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends qemu-system-x86 zstd
+            if [ -n "$OCI_REF" ]; then
+              sudo apt-get install -y --no-install-recommends oras
+            fi
             ;;
           macOS)
             # GH macos-latest runners have HVF but no qemu pre-installed.
             # Brew install is slow (~1 min) but cached on subsequent runs.
-            brew install qemu zstd
+            local_pkgs="qemu zstd"
+            [ -n "$OCI_REF" ] && local_pkgs="$local_pkgs oras"
+            brew install $local_pkgs
             ;;
           *)
             echo "Error: unsupported RUNNER_OS=$RUNNER_OS" >&2
@@ -171,6 +188,7 @@ runs:
 
     - name: Restore only (no save) — when cache-restore-only=true
       uses: actions/cache/restore@v4
+      id: cache-restore-only
       if: inputs.cache-restore-only == 'true'
       with:
         path: |
@@ -179,3 +197,25 @@ runs:
           ~/.local/share/aq/aarch64
         key: ${{ steps.cache-key.outputs.key }}
         restore-keys: ${{ steps.cache-key.outputs.restore-keys }}
+
+    - name: OCI fallback pull (on GH-cache miss + oci-cache-ref set)
+      shell: bash
+      if: |
+        inputs.oci-cache-ref != ''
+        && steps.cache-restore.outputs.cache-hit != 'true'
+        && steps.cache-restore-only.outputs.cache-hit != 'true'
+      env:
+        OCI_REF: ${{ inputs.oci-cache-ref }}
+      run: |
+        set -e
+        echo "GH cache miss — attempting OCI fallback pull from $OCI_REF"
+        # GHCR uses GITHUB_TOKEN auth; users with non-GHCR registries
+        # must `oras login` in an earlier step.
+        if [[ "$OCI_REF" == ghcr.io/* ]] && [ -n "${GITHUB_TOKEN:-}" ]; then
+          echo "$GITHUB_TOKEN" | oras login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+        fi
+        # bake-cache --pull restores into $RL_CACHE_DIR.
+        # Falls back gracefully if the OCI ref doesn't exist yet
+        # (e.g. first-ever push on a new repo).
+        bake-cache --pull "$OCI_REF" || \
+          echo "OCI fallback pull failed (probably no artifact at $OCI_REF yet); cold path will rebuild and the user's post-step push will populate it."

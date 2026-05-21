@@ -45,6 +45,7 @@ That's it. The action handles:
 | `cache-extra-paths` | `''` | Extra newline-separated file globs to hash into the cache key on top of the defaults. |
 | `cache-restore-only` | `false` | `true` to restore only (skip save). Useful for ephemeral PR jobs that shouldn't populate cache. |
 | `no-snapshot-compress` | `false` | `true` sets `AQ_NO_SNAPSHOT_COMPRESS=1` — ~400 ms faster warm in exchange for ~1.1 GB extra cache per kind=live layer. |
+| `oci-cache-ref` | `''` | Optional OCI ref (e.g. `ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest`). When set, the action also installs `oras` and — on GH-cache miss — attempts `bake cache --pull <oci-cache-ref>` as a second-tier fallback. The push side is the user's responsibility (see "Two-tier cache" below). |
 
 ## Examples
 
@@ -81,6 +82,47 @@ Useful when:
 - You run many `bake run` calls per job and the 400 ms × N warm time
   matters more than the ~1.1 GB extra cache per live layer.
 - Your repo is well under the 10 GB GH Actions cache quota.
+
+### Two-tier cache (GH cache + OCI fallback)
+
+GH Actions cache has a 10 GB / 7-day retention quota; OCI registries
+(like GHCR) don't. Use OCI as a longer-term, larger-volume backstop
+for the GH cache:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+
+  - uses: pirj/setup-bakerish@v1
+    with:
+      oci-cache-ref: ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  - run: bake run -- bundle exec rspec
+
+  # Push to OCI on main-branch builds only — avoids per-PR-commit
+  # churn polluting the long-term cache.
+  - name: Push cache to OCI (main only)
+    if: always() && github.ref == 'refs/heads/main'
+    run: bake cache --push ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The action pulls **per-layer blobs**: identical layer content across
+pushes dedups server-side by sha256, so an unchanged `_base` /
+`docker-engine` / `ruby-bundler` slot doesn't re-upload bytes — only
+the changed slot's blob actually transfers. Active-PR churn (rails
+migrations every commit) only uploads ~50 MB per push (the changed
+slot), not the full 2.6 GB.
+
+GHCR auth is via `GITHUB_TOKEN`. Workflow permissions must include
+`packages: write` for push; pull only needs `packages: read`.
+
+Cache TTL: GHCR has no automatic eviction. Run a periodic GC job
+(`bake cache --gc` — TBD) to prune stale layer manifests once the
+roadmap GC command lands.
 
 ### Matrix sharding
 
