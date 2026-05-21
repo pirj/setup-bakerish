@@ -77,7 +77,14 @@ runs:
         case "$RUNNER_OS" in
           Linux)
             sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends qemu-system-x86 zstd
+            # `ovmf` is needed by aq's base-build path: the Alpine live
+            # ISO boots via UEFI for the initial setup-alpine install,
+            # even though direct kernel boot is the default for every
+            # VM started from the resulting base. `tio` is aq's serial
+            # console helper. `socat` + `wget` round out aq's
+            # host_deps.
+            sudo apt-get install -y --no-install-recommends \
+              qemu-system-x86 ovmf tio socat wget zstd
             if [ -n "$OCI_REF" ]; then
               sudo apt-get install -y --no-install-recommends oras
             fi
@@ -85,7 +92,7 @@ runs:
           macOS)
             # GH macos-latest runners have HVF but no qemu pre-installed.
             # Brew install is slow (~1 min) but cached on subsequent runs.
-            local_pkgs="qemu zstd"
+            local_pkgs="qemu zstd tio socat"
             [ -n "$OCI_REF" ] && local_pkgs="$local_pkgs oras"
             brew install $local_pkgs
             ;;
