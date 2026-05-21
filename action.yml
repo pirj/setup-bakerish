@@ -9,18 +9,18 @@ branding:
   color: 'orange'
 
 inputs:
-  aq-ref:
-    description: 'Git ref of pirj/aq to install (branch / tag / SHA).'
+  aq-version:
+    description: 'Release tag of pirj/aq to install (e.g. v2.5.7). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'main'
-  rlock-ref:
-    description: 'Git ref of pirj/rlock to install.'
+    default: 'v2.5.7'
+  rlock-version:
+    description: 'Release tag of pirj/rlock to install (e.g. v0.1.0).'
     required: false
-    default: 'main'
-  bakeri-ref:
-    description: 'Git ref of pirj/bakeri.sh to install.'
+    default: 'v0.1.0'
+  bakeri-version:
+    description: 'Release tag of pirj/bakeri.sh to install (e.g. v0.1.0).'
     required: false
-    default: 'main'
+    default: 'v0.1.0'
   cache-key-prefix:
     description: >-
       Prefix for the actions/cache key. Use to segment caches by purpose
@@ -95,17 +95,35 @@ runs:
             ;;
         esac
 
-    - name: Clone aq / rlock / bakeri.sh at pinned refs
+    - name: Install aq / rlock / bakeri.sh from release tarballs
       shell: bash
       env:
-        AQ_REF:     ${{ inputs.aq-ref }}
-        RLOCK_REF:  ${{ inputs.rlock-ref }}
-        BAKERI_REF: ${{ inputs.bakeri-ref }}
+        AQ_VERSION:     ${{ inputs.aq-version }}
+        RLOCK_VERSION:  ${{ inputs.rlock-version }}
+        BAKERI_VERSION: ${{ inputs.bakeri-version }}
       run: |
         set -e
-        git clone --depth=1 --branch "$AQ_REF"     https://github.com/pirj/aq        "$HOME/aq"
-        git clone --depth=1 --branch "$RLOCK_REF"  https://github.com/pirj/rlock     "$HOME/rlock"
-        git clone --depth=1 --branch "$BAKERI_REF" https://github.com/pirj/bakeri.sh "$HOME/bakeri.sh"
+        # Release tarballs are the GitHub-auto-generated source archives
+        # at `archive/refs/tags/<tag>.tar.gz`. Faster than `git clone`
+        # (one anonymous GET vs git protocol negotiation) and the
+        # *-version inputs naturally enforce "pinned to a real release"
+        # rather than tracking a moving branch.
+        fetch() {
+            local owner_repo="$1" tag="$2" dest="$3"
+            local url="https://github.com/${owner_repo}/archive/refs/tags/${tag}.tar.gz"
+            mkdir -p "$dest"
+            # --strip-components=1 drops the `<repo>-<tag-no-v>/` prefix
+            # the GH-generated tarball wraps everything in.
+            curl -sSL "$url" | tar xz -C "$dest" --strip-components=1
+            # `aq` ships an executable shell script (no extension) at
+            # the repo root — make sure it's executable.
+            find "$dest/bin" -type f -exec chmod +x {} + 2>/dev/null || true
+        }
+        fetch pirj/aq        "$AQ_VERSION"     "$HOME/aq"
+        fetch pirj/rlock     "$RLOCK_VERSION"  "$HOME/rlock"
+        fetch pirj/bakeri.sh "$BAKERI_VERSION" "$HOME/bakeri.sh"
+        # aq's main script is at the repo root, not under bin/.
+        chmod +x "$HOME/aq/aq"
 
     - name: Wire bakeri.sh / rlock / aq into the runner env
       shell: bash

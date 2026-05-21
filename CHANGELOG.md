@@ -6,6 +6,22 @@ All notable changes to setup-bakerish — one-liner per change.
 
 - (nothing pending)
 
+## v2.0.0 — 2026-05-21 (breaking)
+
+Breaking changes vs v1.0.0:
+
+- **Inputs renamed**: `aq-ref` / `rlock-ref` / `bakeri-ref` →
+  `aq-version` / `rlock-version` / `bakeri-version`. Defaults shifted
+  from `main` (branch) to release tags (`v2.5.7` / `v0.1.0` /
+  `v0.1.0`). Pinning to a moving branch is no longer a supported
+  default; use explicit release tags.
+- **Download mechanism**: `git clone --depth=1` replaced by
+  `curl tarball + tar xz --strip-components=1`. ~1–3 s faster per
+  repo (~3–6 s total). Requires the named version to be an actual
+  GH Release (i.e. a tag with an associated release).
+- Migration: change `*-ref` → `*-version`; bump `@v1` to `@v2` in
+  `uses:`. If you need the old behaviour, `@v1.0.0` is frozen.
+
 ## v1.0.0 — 2026-05-21
 
 Initial public release.

@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pirj/setup-bakerish@v1
+      - uses: pirj/setup-bakerish@v2
       - run: bake run -- bundle exec rspec
 ```
 
 That's it. The action handles:
 
 - Host package install (qemu + zstd) — apt on Linux, brew on macOS.
-- Clones of `pirj/aq`, `pirj/rlock`, `pirj/bakeri.sh` to `$HOME/`.
+- Release-tarball download of `pirj/aq`, `pirj/rlock`, `pirj/bakeri.sh` to `$HOME/` (pinned to `*-version` inputs).
 - `PATH` setup for `aq`, `rl`, `bake`.
 - `RLOCK_PLUGIN_PATH` wired to bakeri.sh's plugin dir.
 - `actions/cache@v4` restore + automatic save of `~/.local/share/aq/cache`.
@@ -38,9 +38,9 @@ That's it. The action handles:
 
 | Input | Default | Purpose |
 |---|---|---|
-| `aq-ref` | `main` | Git ref of `pirj/aq` to install. Pin to a tag once you've validated a version. |
-| `rlock-ref` | `main` | Git ref of `pirj/rlock` to install. |
-| `bakeri-ref` | `main` | Git ref of `pirj/bakeri.sh` to install. |
+| `aq-version` | `v2.5.7` | Release tag of `pirj/aq`. Download is via the GH-auto-generated release tarball — must match an existing release. |
+| `rlock-version` | `v0.1.0` | Release tag of `pirj/rlock`. |
+| `bakeri-version` | `v0.1.0` | Release tag of `pirj/bakeri.sh`. |
 | `cache-key-prefix` | `bakeri` | Prefix for the cache key. Use to segment caches by purpose. |
 | `cache-extra-paths` | `''` | Extra newline-separated file globs to hash into the cache key on top of the defaults. |
 | `cache-restore-only` | `false` | `true` to restore only (skip save). Useful for ephemeral PR jobs that shouldn't populate cache. |
@@ -52,17 +52,17 @@ That's it. The action handles:
 ### Pin everything to specific versions
 
 ```yaml
-- uses: pirj/setup-bakerish@v1
+- uses: pirj/setup-bakerish@v2
   with:
-    aq-ref:     v2.5.7
-    rlock-ref:  v0.4.0          # once releases exist
-    bakeri-ref: v0.3.0
+    aq-version:     v2.5.7
+    rlock-version:  v0.1.0
+    bakeri-version: v0.1.0
 ```
 
 ### Add custom cache-key inputs
 
 ```yaml
-- uses: pirj/setup-bakerish@v1
+- uses: pirj/setup-bakerish@v2
   with:
     cache-extra-paths: |
       config/forbidden-licenses.txt
@@ -73,7 +73,7 @@ That's it. The action handles:
 ### Opt out of zstd memory compression for faster warm
 
 ```yaml
-- uses: pirj/setup-bakerish@v1
+- uses: pirj/setup-bakerish@v2
   with:
     no-snapshot-compress: 'true'
 ```
@@ -93,7 +93,7 @@ for the GH cache:
 steps:
   - uses: actions/checkout@v4
 
-  - uses: pirj/setup-bakerish@v1
+  - uses: pirj/setup-bakerish@v2
     with:
       oci-cache-ref: ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest
     env:
@@ -132,7 +132,7 @@ strategy:
     shard: [1, 2, 3, 4]
 steps:
   - uses: actions/checkout@v4
-  - uses: pirj/setup-bakerish@v1
+  - uses: pirj/setup-bakerish@v2
   - run: bake run -- bundle exec rspec --shard=${{ matrix.shard }}/4
 ```
 
@@ -146,7 +146,7 @@ wall-clock.
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: pirj/setup-bakerish@v1
+  - uses: pirj/setup-bakerish@v2
   - run: |
       bake run --vm-suffix=lint -- rubocop  &
       bake run --vm-suffix=test -- rspec    &
@@ -186,10 +186,10 @@ Use this action otherwise.
 
 ## Status
 
-Pre-release. Pin to `main` for now; v1 tag will be cut once the
-upstream `pirj/aq` + `pirj/rlock` + `pirj/bakeri.sh` are
-GH-Marketplace-publishable (currently private repos during early
-adoption).
+Public, v2.0.0 (released 2026-05-21). Pin to `@v2` for the latest
+v2.x.x (input names are `*-version`, downloads via release tarballs).
+`@v1.0.0` still works against the older `*-ref` / `git clone`
+interface — kept frozen for anyone who pinned exactly.
 
 ## License
 
