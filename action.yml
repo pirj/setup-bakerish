@@ -93,7 +93,7 @@ runs:
             # source below.
             sudo apt-get install -y --no-install-recommends \
               qemu-system-x86 qemu-utils ovmf socat wget zstd \
-              meson ninja-build pkg-config liblua5.4-dev libinih-dev gcc
+              meson ninja-build pkg-config liblua5.4-dev libinih-dev libglib2.0-dev gcc
             curl -sSL https://github.com/tio/tio/archive/refs/tags/v3.7.tar.gz \
               | tar xz -C "$HOME"
             (
