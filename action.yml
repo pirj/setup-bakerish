@@ -56,12 +56,12 @@ inputs:
     default: 'false'
   oci-cache-ref:
     description: >-
-      Optional OCI ref (e.g. `ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest`)
+      Optional OCI ref (e.g. ghcr.io/<owner>/bakerish-cache:latest)
       used as a second-tier cache. When set, this step also installs
       `oras` and — on GH-cache miss — attempts `bake cache --pull
       <oci-cache-ref>` as a fallback. The push side stays in the
-      user's workflow: see README for the `if: always() && github.ref
-      == 'refs/heads/main'` post-step that calls `bake cache --push`.
+      user's workflow (see README for the main-only post-step that
+      calls `bake cache --push`).
     required: false
     default: ''
 
