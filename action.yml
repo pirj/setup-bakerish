@@ -83,8 +83,11 @@ runs:
             # VM started from the resulting base. `tio` is aq's serial
             # console helper. `socat` + `wget` round out aq's
             # host_deps.
+            # qemu-utils ships qemu-img (separate package from
+            # qemu-system-x86 on Ubuntu, needed for aq's base-image
+            # work and snapshot rebases).
             sudo apt-get install -y --no-install-recommends \
-              qemu-system-x86 ovmf tio socat wget zstd
+              qemu-system-x86 qemu-utils ovmf tio socat wget zstd
             if [ -n "$OCI_REF" ]; then
               sudo apt-get install -y --no-install-recommends oras
             fi
