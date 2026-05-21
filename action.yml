@@ -86,8 +86,20 @@ runs:
             # qemu-utils ships qemu-img (separate package from
             # qemu-system-x86 on Ubuntu, needed for aq's base-image
             # work and snapshot rebases).
+            #
+            # Note: Ubuntu 24.04 LTS ships tio 2.5 but aq needs tio
+            # >= 3.0 for `--script` support. We install everything
+            # except tio from apt, then build a current tio from
+            # source below.
             sudo apt-get install -y --no-install-recommends \
-              qemu-system-x86 qemu-utils ovmf tio socat wget zstd
+              qemu-system-x86 qemu-utils ovmf socat wget zstd \
+              meson ninja-build pkg-config liblua5.4-dev libinih-dev gcc
+            curl -sSL https://github.com/tio/tio/archive/refs/tags/v3.7.tar.gz \
+              | sudo tar xz -C /opt
+            ( cd /opt/tio-3.7 && \
+              sudo meson setup build --prefix=/usr/local && \
+              sudo meson compile -C build && \
+              sudo meson install -C build ) >/dev/null
             if [ -n "$OCI_REF" ]; then
               sudo apt-get install -y --no-install-recommends oras
             fi
