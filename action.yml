@@ -116,9 +116,13 @@ runs:
             sudo udevadm trigger --name-match=kvm
             ;;
           macOS)
-            # GH macos-latest runners have HVF but no qemu pre-installed.
+            # GH macos-* runners have HVF but no qemu pre-installed,
+            # and ship Apple's ancient `/bin/bash` 3.2 (pre-GPLv3 cut)
+            # which lacks `mapfile`, used throughout bakeri.sh + rlock.
+            # `brew install bash` puts Bash 5.x at /opt/homebrew/bin/
+            # bash, which #!/usr/bin/env bash shebangs then pick up.
             # Brew install is slow (~1 min) but cached on subsequent runs.
-            local_pkgs="qemu zstd tio socat"
+            local_pkgs="bash qemu zstd tio socat"
             [ -n "$OCI_REF" ] && local_pkgs="$local_pkgs oras"
             brew install $local_pkgs
             ;;
