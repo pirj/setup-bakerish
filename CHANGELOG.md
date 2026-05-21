@@ -4,9 +4,12 @@ All notable changes to setup-bakerish — one-liner per change.
 
 ## Unreleased
 
-- (nothing pending)
+- Bump `aq-version` default to `v2.5.8` (the "Don't poke GRUB" release
+  that fixes the Linux/KVM base-build hang surfaced during this
+  repo's first validation pass).
 
 ## v2.0.0 — 2026-05-21 (breaking)
+
 
 Breaking changes vs v1.0.0:
 
