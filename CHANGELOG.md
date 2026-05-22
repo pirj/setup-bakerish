@@ -8,10 +8,13 @@ All notable changes to setup-bakerish — one-liner per change.
   detection + sentinel handshake for the kernel/initramfs extraction
   phase — v2.5.13's blkid approach didn't actually work because
   busybox blkid doesn't accept util-linux's query syntax).
-- Bump `bakeri-version` default to `v0.1.1` (docker-engine plugin
-  adds the `rlock` user to the `docker` group; prebuild commands
-  using `docker compose` no longer fail with permission denied on
-  /var/run/docker.sock).
+- Bump `rlock-version` default to `v0.1.1` (`rl new --size=NG`
+  flag — used by bakeri.sh's `[disk] size` threading).
+- Bump `bakeri-version` default to `v0.1.2` (`[disk] size` in
+  bakerish.toml overrides the 16G default; docker-engine plugin
+  adds the `rlock` user to the `docker` group so prebuild
+  commands using `docker compose` no longer fail with permission
+  denied on /var/run/docker.sock).
 - Build **tio v3.9** from source on Linux (was v3.7). tio v3.8
   renamed the Lua scripting "write to serial" function from
   `send(s)` to `write(s)`; aq has been using the v3.8+ name all

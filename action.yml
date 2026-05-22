@@ -14,13 +14,13 @@ inputs:
     required: false
     default: 'v2.5.14'
   rlock-version:
-    description: 'Release tag of pirj/rlock to install (e.g. v0.1.0).'
-    required: false
-    default: 'v0.1.0'
-  bakeri-version:
-    description: 'Release tag of pirj/bakeri.sh to install (e.g. v0.1.1).'
+    description: 'Release tag of pirj/rlock to install (e.g. v0.1.1).'
     required: false
     default: 'v0.1.1'
+  bakeri-version:
+    description: 'Release tag of pirj/bakeri.sh to install (e.g. v0.1.2).'
+    required: false
+    default: 'v0.1.2'
   cache-key-prefix:
     description: >-
       Prefix for the actions/cache key. Use to segment caches by purpose
