@@ -10,9 +10,9 @@ branding:
 
 inputs:
   aq-version:
-    description: 'Release tag of pirj/aq to install (e.g. v2.5.10). Download is via release tarball — must match an existing GH Release.'
+    description: 'Release tag of pirj/aq to install (e.g. v2.5.12). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.10'
+    default: 'v2.5.12'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.0).'
     required: false
@@ -88,16 +88,19 @@ runs:
             # work and snapshot rebases).
             #
             # Note: Ubuntu 24.04 LTS ships tio 2.5 but aq needs tio
-            # >= 3.0 for `--script` support. We install everything
-            # except tio from apt, then build a current tio from
-            # source below.
+            # >= 3.8 for the Lua scripting API (in v3.8 the
+            # "write to serial" function was renamed from send() to
+            # write(); aq's scripts use the v3.8+ name). We install
+            # everything except tio from apt, then build a current
+            # tio from source below.
             sudo apt-get install -y --no-install-recommends \
               qemu-system-x86 qemu-utils ovmf socat wget zstd \
               meson ninja-build pkg-config liblua5.4-dev libinih-dev libglib2.0-dev gcc
-            curl -sSL https://github.com/tio/tio/archive/refs/tags/v3.7.tar.gz \
+            TIO_VERSION=3.9
+            curl -sSL "https://github.com/tio/tio/archive/refs/tags/v${TIO_VERSION}.tar.gz" \
               | tar xz -C "$HOME"
             (
-              cd "$HOME/tio-3.7"
+              cd "$HOME/tio-${TIO_VERSION}"
               meson setup build --prefix=/usr/local
               meson compile -C build
               sudo meson install -C build

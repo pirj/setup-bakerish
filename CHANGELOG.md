@@ -4,9 +4,16 @@ All notable changes to setup-bakerish — one-liner per change.
 
 ## Unreleased
 
-- Bump `aq-version` default to `v2.5.10` (`yes |` into setup-alpine
-  + drop `--mute` from tio so the serial stream surfaces; fixes the
-  post-login Linux/KVM bootstrap hang surfaced by validation).
+- Build **tio v3.9** from source on Linux (was v3.7). tio v3.8
+  renamed the Lua scripting "write to serial" function from
+  `send(s)` to `write(s)`; aq has been using the v3.8+ name all
+  along, so the v3.7 binary made every aq `write()` call resolve to
+  nil — that was the real cause of the Linux/KVM post-login hang
+  (NOT a setup-alpine issue). Homebrew on macOS ships v3.9, so the
+  bug was Linux-only.
+- Bump `aq-version` default to `v2.5.12` (reverts the v2.5.11
+  misdiagnosed write→send rename; aq's `write()` is correct now
+  that the runner has the right tio).
 
 ## v2.0.0 — 2026-05-21 (breaking)
 
