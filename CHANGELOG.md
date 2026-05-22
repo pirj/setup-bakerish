@@ -4,9 +4,9 @@ All notable changes to setup-bakerish — one-liner per change.
 
 ## Unreleased
 
-- Bump `aq-version` default to `v2.5.9` (diagnostic milestones in
-  `bootstrap_base_image` to name the post-login Linux/KVM bootstrap
-  hang surfaced by validation).
+- Bump `aq-version` default to `v2.5.10` (`yes |` into setup-alpine
+  + drop `--mute` from tio so the serial stream surfaces; fixes the
+  post-login Linux/KVM bootstrap hang surfaced by validation).
 
 ## v2.0.0 — 2026-05-21 (breaking)
 
