@@ -92,16 +92,9 @@ runs:
             # "write to serial" function was renamed from send() to
             # write(); aq's scripts use the v3.8+ name). We install
             # everything except tio from apt, then build a current
-            # tio from source below.
-            #
-            # TODO: when GH Actions adds an ubuntu-26.04 runner
-            # image (currently only 22.04 + 24.04 are available),
-            # switch to `apt install tio` and drop this whole source-
-            # build path along with its build-time deps (meson /
-            # ninja-build / pkg-config / liblua5.4-dev / libinih-dev
-            # / libglib2.0-dev / gcc). Ubuntu 26.04 LTS noble's
-            # successor ships tio 3.9 in main per Launchpad
-            # ('stonking' series).
+            # tio from source below. See TODO.md for the plan to
+            # drop this source-build when ubuntu-26.04 is available
+            # on GH Actions.
             sudo apt-get install -y --no-install-recommends \
               qemu-system-x86 qemu-utils ovmf socat wget zstd \
               meson ninja-build pkg-config liblua5.4-dev libinih-dev libglib2.0-dev gcc
