@@ -4,6 +4,9 @@ All notable changes to setup-bakerish — one-liner per change.
 
 ## Unreleased
 
+- Bump `aq-version` default to `v2.5.13` (cross-arch ext4-root
+  detection via blkid — fixes the kernel/initramfs extraction
+  failure that came after the tio + setup-alpine fixes).
 - Build **tio v3.9** from source on Linux (was v3.7). tio v3.8
   renamed the Lua scripting "write to serial" function from
   `send(s)` to `write(s)`; aq has been using the v3.8+ name all
