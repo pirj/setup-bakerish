@@ -1,7 +1,6 @@
 # setup-bakerish TODO
 
-Per-repo todo list. Cross-repo items live in the umbrella's
-[ai.rlock TODO.md](https://github.com/pirj/ai.rlock/blob/main/TODO.md).
+Per-repo todo list.
 
 ## Open
 
