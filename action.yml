@@ -10,13 +10,13 @@ branding:
 
 inputs:
   aq-version:
-    description: 'Release tag of pirj/aq to install (e.g. v2.5.22). Download is via release tarball — must match an existing GH Release.'
+    description: 'Release tag of pirj/aq to install (e.g. v2.5.23). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.22'
+    default: 'v2.5.23'
   rlock-version:
-    description: 'Release tag of pirj/rlock to install (e.g. v0.1.4-diag).'
+    description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
-    default: 'v0.1.4-diag'
+    default: 'v0.1.3'
   bakeri-version:
     description: 'Release tag of pirj/bakeri.sh to install (e.g. v0.1.2).'
     required: false
