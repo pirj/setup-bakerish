@@ -10,9 +10,9 @@ branding:
 
 inputs:
   aq-version:
-    description: 'Release tag of pirj/aq to install (e.g. v2.5.21). Download is via release tarball — must match an existing GH Release.'
+    description: 'Release tag of pirj/aq to install (e.g. v2.5.22). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.21'
+    default: 'v2.5.22'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
