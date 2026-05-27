@@ -96,7 +96,7 @@ runs:
             # drop this source-build when ubuntu-26.04 is available
             # on GH Actions.
             sudo apt-get install -y --no-install-recommends \
-              qemu-system-x86 qemu-utils ovmf socat wget zstd \
+              qemu-system-x86 qemu-utils ovmf socat wget \
               meson ninja-build pkg-config liblua5.4-dev libinih-dev libglib2.0-dev gcc
             TIO_VERSION=3.9
             curl -sSL "https://github.com/tio/tio/archive/refs/tags/v${TIO_VERSION}.tar.gz" \
@@ -107,6 +107,21 @@ runs:
               meson compile -C build
               sudo meson install -C build
             )
+            # zstd 1.5.5 (Ubuntu 24.04 apt default) has a --patch-from
+            # bug for ~1.7 GiB refs under --long=31 (produces patches
+            # whose decode trips error 36 "Restored data doesn't match
+            # checksum"). Fixed in 1.5.6. Build 1.5.7 from source.
+            # Drop this when ubuntu-26 ships in GH runner images and
+            # apt's zstd is ≥ 1.5.6.
+            ZSTD_VER=1.5.7
+            curl -sSL "https://github.com/facebook/zstd/archive/refs/tags/v${ZSTD_VER}.tar.gz" \
+              | tar xz -C "$HOME"
+            (cd "$HOME/zstd-${ZSTD_VER}" && make -j zstd HAVE_PTHREAD=1 >/dev/null 2>&1)
+            sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/programs/zstd" /usr/local/bin/zstd
+            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && make -j pzstd >/dev/null 2>&1) || true
+            if [ -f "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" ]; then
+              sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" /usr/local/bin/pzstd
+            fi
             if [ -n "$OCI_REF" ]; then
               sudo apt-get install -y --no-install-recommends oras
             fi
