@@ -12,15 +12,15 @@ inputs:
   aq-version:
     description: 'Release tag of pirj/aq to install (e.g. v2.5.23). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.37'
+    default: 'v2.5.38'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
-    default: 'v0.1.9'
+    default: 'v0.1.10'
   snapcompose-version:
     description: 'Release tag of pirj/snapcompose to install (e.g. v0.1.2).'
     required: false
-    default: 'v0.1.2'
+    default: 'v0.2.0'
   cache-key-prefix:
     description: >-
       Prefix for the actions/cache key. Use to segment caches by purpose
