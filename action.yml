@@ -20,7 +20,7 @@ inputs:
   snapcompose-version:
     description: 'Release tag of pirj/snapcompose to install (e.g. v0.1.2).'
     required: false
-    default: 'v0.2.0'
+    default: 'v0.2.1'
   cache-key-prefix:
     description: >-
       Prefix for the actions/cache key. Use to segment caches by purpose
