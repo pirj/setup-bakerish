@@ -1,4 +1,4 @@
-# setup-bakerish TODO
+# setup-snapcompose TODO
 
 Per-repo todo list.
 

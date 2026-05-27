@@ -1,13 +1,13 @@
-# setup-bakerish
+# setup-snapcompose
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-not--published--yet-lightgrey)](#)
 
-GitHub Action that installs `aq` + `rlock` + `bakeri.sh`, wires
+GitHub Action that installs `aq` + `rlock` + `snapcompose`, wires
 `RLOCK_PLUGIN_PATH`, and restores the snapshot layer cache so subsequent
 `bake run -- <cmd>` calls hit the sub-second-warm path.
 
 Replaces the ~25-line install + cache choreography in
-[bakeri.sh's example CI workflow](https://github.com/pirj/bakeri.sh/blob/main/.github/workflows/example-bakerish-ci.yml)
+[snapcompose's example CI workflow](https://github.com/pirj/snapcompose/blob/main/.github/workflows/example-snapcompose-ci.yml)
 with a single step.
 
 ## Quick start
@@ -20,18 +20,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pirj/setup-bakerish@v2
+      - uses: pirj/setup-snapcompose@v2
       - run: bake run -- bundle exec rspec
 ```
 
 That's it. The action handles:
 
 - Host package install (qemu + zstd) — apt on Linux, brew on macOS.
-- Release-tarball download of `pirj/aq`, `pirj/rlock`, `pirj/bakeri.sh` to `$HOME/` (pinned to `*-version` inputs).
+- Release-tarball download of `pirj/aq`, `pirj/rlock`, `pirj/snapcompose` to `$HOME/` (pinned to `*-version` inputs).
 - `PATH` setup for `aq`, `rl`, `bake`.
-- `RLOCK_PLUGIN_PATH` wired to bakeri.sh's plugin dir.
+- `RLOCK_PLUGIN_PATH` wired to snapcompose's plugin dir.
 - `actions/cache@v4` restore + automatic save of `~/.local/share/aq/cache`.
-- Cache key derived from `bakerish.toml` + common lockfiles +
+- Cache key derived from `snapcompose.toml` + common lockfiles +
   `db/schema.rb` + `db/migrate/**` + `Dockerfile` + `docker-compose.*`.
 
 ## Inputs
@@ -40,29 +40,29 @@ That's it. The action handles:
 |---|---|---|
 | `aq-version` | `v2.5.7` | Release tag of `pirj/aq`. Download is via the GH-auto-generated release tarball — must match an existing release. |
 | `rlock-version` | `v0.1.0` | Release tag of `pirj/rlock`. |
-| `bakeri-version` | `v0.1.0` | Release tag of `pirj/bakeri.sh`. |
-| `cache-key-prefix` | `bakeri` | Prefix for the cache key. Use to segment caches by purpose. |
+| `snapcompose-version` | `v0.1.0` | Release tag of `pirj/snapcompose`. |
+| `cache-key-prefix` | `snapcompose` | Prefix for the cache key. Use to segment caches by purpose. |
 | `cache-extra-paths` | `''` | Extra newline-separated file globs to hash into the cache key on top of the defaults. |
 | `cache-restore-only` | `false` | `true` to restore only (skip save). Useful for ephemeral PR jobs that shouldn't populate cache. |
 | `no-snapshot-compress` | `false` | `true` sets `AQ_NO_SNAPSHOT_COMPRESS=1` — ~400 ms faster warm in exchange for ~1.1 GB extra cache per kind=live layer. |
-| `oci-cache-ref` | `''` | Optional OCI ref (e.g. `ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest`). When set, the action also installs `oras` and — on GH-cache miss — attempts `bake cache --pull <oci-cache-ref>` as a second-tier fallback. The push side is the user's responsibility (see "Two-tier cache" below). |
+| `oci-cache-ref` | `''` | Optional OCI ref (e.g. `ghcr.io/${{ github.repository_owner }}/snapcompose-cache:latest`). When set, the action also installs `oras` and — on GH-cache miss — attempts `bake cache --pull <oci-cache-ref>` as a second-tier fallback. The push side is the user's responsibility (see "Two-tier cache" below). |
 
 ## Examples
 
 ### Pin everything to specific versions
 
 ```yaml
-- uses: pirj/setup-bakerish@v2
+- uses: pirj/setup-snapcompose@v2
   with:
     aq-version:     v2.5.7
     rlock-version:  v0.1.0
-    bakeri-version: v0.1.0
+    snapcompose-version: v0.1.0
 ```
 
 ### Add custom cache-key inputs
 
 ```yaml
-- uses: pirj/setup-bakerish@v2
+- uses: pirj/setup-snapcompose@v2
   with:
     cache-extra-paths: |
       config/forbidden-licenses.txt
@@ -73,7 +73,7 @@ That's it. The action handles:
 ### Opt out of zstd memory compression for faster warm
 
 ```yaml
-- uses: pirj/setup-bakerish@v2
+- uses: pirj/setup-snapcompose@v2
   with:
     no-snapshot-compress: 'true'
 ```
@@ -93,9 +93,9 @@ for the GH cache:
 steps:
   - uses: actions/checkout@v4
 
-  - uses: pirj/setup-bakerish@v2
+  - uses: pirj/setup-snapcompose@v2
     with:
-      oci-cache-ref: ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest
+      oci-cache-ref: ghcr.io/${{ github.repository_owner }}/snapcompose-cache:latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -105,7 +105,7 @@ steps:
   # churn polluting the long-term cache.
   - name: Push cache to OCI (main only)
     if: always() && github.ref == 'refs/heads/main'
-    run: bake cache --push ghcr.io/${{ github.repository_owner }}/bakerish-cache:latest
+    run: bake cache --push ghcr.io/${{ github.repository_owner }}/snapcompose-cache:latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -132,7 +132,7 @@ strategy:
     shard: [1, 2, 3, 4]
 steps:
   - uses: actions/checkout@v4
-  - uses: pirj/setup-bakerish@v2
+  - uses: pirj/setup-snapcompose@v2
   - run: bake run -- bundle exec rspec --shard=${{ matrix.shard }}/4
 ```
 
@@ -146,7 +146,7 @@ wall-clock.
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: pirj/setup-bakerish@v2
+  - uses: pirj/setup-snapcompose@v2
   - run: |
       bake run --vm-suffix=lint -- rubocop  &
       bake run --vm-suffix=test -- rspec    &
@@ -173,7 +173,7 @@ independent state but shared layer cache.
 
 ## How it compares to the inline workflow
 
-The [bakeri.sh inline reference workflow](https://github.com/pirj/bakeri.sh/blob/main/.github/workflows/example-bakerish-ci.yml)
+The [snapcompose inline reference workflow](https://github.com/pirj/snapcompose/blob/main/.github/workflows/example-snapcompose-ci.yml)
 does the same thing in ~25 lines. The packaged action saves the
 typing and gets you cache-key sanity for free. Same runtime behaviour.
 

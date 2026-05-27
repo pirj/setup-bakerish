@@ -1,15 +1,17 @@
-# setup-bakerish — orientation for agents
+# setup-snapcompose — orientation for agents
 
-`setup-bakerish` is a **GitHub Actions composite action** that
-installs the `aq + rlock + bakeri.sh` toolchain on a runner,
+`setup-snapcompose` is a **GitHub Actions composite action** that
+installs the `aq + rlock + snapcompose` toolchain on a runner,
 wires `RLOCK_PLUGIN_PATH`, and restores the snapshot-layer cache
 so subsequent `bake run -- <cmd>` calls hit the sub-second-warm
 path.
 
-> **Rename pending: `setup-bakerish` → `setup-snapcompose`.**
-> Follows the [`bakeri.sh` → `snapcompose` rename](../bakeri.sh/CLAUDE.md).
-> Needs `@v3` (major bump) plus a deprecation period on the old
-> name because user repos pin the action by name.
+> Renamed from `setup-bakerish` to `setup-snapcompose` on
+> 2026-05-27 (v3.0.0). Follows the [`pirj/bakeri.sh` →
+> `pirj/snapcompose` rename](../snapcompose/CLAUDE.md). Consumer
+> workflows should migrate from `pirj/setup-bakerish@v2` to
+> `pirj/setup-snapcompose@v3`; GitHub redirects keep the old
+> `uses:` reference working until they break.
 
 See [`README.md`](README.md) for usage, [`action.yml`](action.yml)
 for inputs, [`TODO.md`](TODO.md) for open work, and the umbrella's
@@ -22,7 +24,7 @@ Replaces ~25 lines of install + cache choreography in a consumer
 project's workflow with a single `uses:` step.
 
 ```yaml
-- uses: pirj/setup-bakerish@v2
+- uses: pirj/setup-snapcompose@v2
 - run: bake run -- bundle exec rspec
 ```
 
@@ -31,11 +33,11 @@ Behind the scenes, the action's steps do:
 1. Install host packages (`qemu`, `zstd`) — apt on Linux, brew on
    macOS.
 2. Download release tarballs of `pirj/aq`, `pirj/rlock`,
-   `pirj/bakeri.sh` (pinned versions via inputs) into `$HOME/`.
+   `pirj/snapcompose` (pinned versions via inputs) into `$HOME/`.
 3. Add `aq`, `rl`, `bake` to `PATH`.
-4. Set `RLOCK_PLUGIN_PATH` to bakeri.sh's plugin dir.
+4. Set `RLOCK_PLUGIN_PATH` to snapcompose's plugin dir.
 5. Restore (and optionally save) `~/.local/share/aq/cache` via
-   `actions/cache@v4`, key derived from `bakerish.toml` +
+   `actions/cache@v4`, key derived from `snapcompose.toml` +
    common lockfiles + `db/schema.rb` + migrations + Dockerfile +
    `docker-compose.*`.
 6. Optionally fall back to OCI cache pull (`bake cache --pull`)
@@ -47,7 +49,7 @@ Behind the scenes, the action's steps do:
   steps are `run:` shell. Don't introduce a `node20` action
   type — the simpler shell model is intentional.
 - **Pin to release tarballs, not branches.** Inputs are
-  `aq-version`, `rlock-version`, `bakeri-version`; all default
+  `aq-version`, `rlock-version`, `snapcompose-version`; all default
   to specific tags (e.g. `v2.5.18`). Each tag must correspond to
   an existing GitHub Release tarball.
 - **Cache key must be deterministic.** Anything that affects the
@@ -65,7 +67,7 @@ Behind the scenes, the action's steps do:
   forward on backward-compatible improvements within that major.
 - **Breaking changes bump the major.** Removing or renaming an
   input is breaking. Changing the default tarball version
-  of `aq`/`rlock`/`bakeri.sh` is NOT breaking unless those
+  of `aq`/`rlock`/`snapcompose` is NOT breaking unless those
   components themselves break compat.
 - **The `v2` major** is current as of 2026-05-25, validated
   green end-to-end on ubuntu-latest at 3m20s cold path (see
@@ -75,7 +77,7 @@ Behind the scenes, the action's steps do:
 ## Validation discipline
 
 This action is the seam between three independently-released
-tools (`aq`, `rlock`, `bakeri.sh`). Cross-version breakage is a
+tools (`aq`, `rlock`, `snapcompose`). Cross-version breakage is a
 real risk. Conventions:
 
 - **Validate end-to-end before bumping default versions.** The
@@ -94,8 +96,8 @@ real risk. Conventions:
 |---|---|---|
 | `aq-version` | `v2.5.18` | Release tag of `pirj/aq`. Tarball download. |
 | `rlock-version` | `v0.1.3` | Release tag of `pirj/rlock`. |
-| `bakeri-version` | `v0.1.2` | Release tag of `pirj/bakeri.sh`. |
-| `cache-key-prefix` | `bakeri` | Prefix for actions/cache key. |
+| `snapcompose-version` | `v0.1.2` | Release tag of `pirj/snapcompose`. |
+| `cache-key-prefix` | `snapcompose` | Prefix for actions/cache key. |
 | `cache-extra-paths` | `''` | Newline-separated extra globs hashed into cache key. |
 | `cache-restore-only` | `'false'` | `'true'` to skip the save step. |
 | `no-snapshot-compress` | `'false'` | `'true'` sets `AQ_NO_SNAPSHOT_COMPRESS=1`. |
@@ -127,8 +129,8 @@ Installed by this action:
 - [`aq`](https://github.com/pirj/aq) — pinned via `aq-version`.
 - [`rlock`](https://github.com/pirj/rlock) — pinned via
   `rlock-version`.
-- [`bakeri.sh`](https://github.com/pirj/bakeri.sh) — pinned via
-  `bakeri-version`. The plugin pack whose `bake` commands
+- [`snapcompose`](https://github.com/pirj/snapcompose) — pinned via
+  `snapcompose-version`. The plugin pack whose `bake` commands
   consumers invoke.
 
 This action does NOT install `ai.rlock` (the AI-agent plugin
@@ -139,13 +141,13 @@ combines them, it would be a separate action.
 
 - **Mechanical work** for this action → [`TODO.md`](TODO.md).
 - **Cross-cutting decisions** that affect the install/cache
-  contract across `aq` + `rlock` + `bakeri.sh` + this action →
+  contract across `aq` + `rlock` + `snapcompose` + this action →
   ADRs in `../meta/decisions/`. See `../meta/CLAUDE.md`.
 - **CHANGELOG.md** for what shipped per major version.
 
 ## Workspace context
 
-This repo lives at `~/source/ai.rlock/setup-bakerish/` inside the
+This repo lives at `~/source/ai.rlock/setup-snapcompose/` inside the
 umbrella workspace. The umbrella's [`CLAUDE.md`](../CLAUDE.md) is
 the single best map of how all sibling repos connect, including
 the pending rename.

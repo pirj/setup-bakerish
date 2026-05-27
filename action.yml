@@ -1,6 +1,6 @@
-name: 'Setup bakeri.sh'
+name: 'Setup snapcompose'
 description: >-
-  Install aq + rlock + bakeri.sh, wire up RLOCK_PLUGIN_PATH, and restore
+  Install aq + rlock + snapcompose, wire up RLOCK_PLUGIN_PATH, and restore
   the snapshot layer cache. After this step `bake run -- <cmd>` works in
   the runner with sub-second warm restores on subsequent runs.
 author: 'pirj'
@@ -12,26 +12,26 @@ inputs:
   aq-version:
     description: 'Release tag of pirj/aq to install (e.g. v2.5.23). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.28'
+    default: 'v2.5.37'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
-    default: 'v0.1.4'
-  bakeri-version:
-    description: 'Release tag of pirj/bakeri.sh to install (e.g. v0.1.2).'
+    default: 'v0.1.9'
+  snapcompose-version:
+    description: 'Release tag of pirj/snapcompose to install (e.g. v0.1.2).'
     required: false
     default: 'v0.1.2'
   cache-key-prefix:
     description: >-
       Prefix for the actions/cache key. Use to segment caches by purpose
-      (e.g. `bakeri-fast` vs `bakeri-full`) or to invalidate on
+      (e.g. `snapcompose-fast` vs `snapcompose-full`) or to invalidate on
       ecosystem-level config bumps without changing any input file.
     required: false
-    default: 'bakeri'
+    default: 'snapcompose'
   cache-extra-paths:
     description: >-
       Newline-separated extra file globs to hash into the cache key on
-      top of the built-in defaults (bakerish.toml + common lockfiles +
+      top of the built-in defaults (snapcompose.toml + common lockfiles +
       db/schema.rb + db/migrate/** + Dockerfile + docker-compose.*).
       Use when your project has its own cache-invalidating files
       (custom build configs, generated headers, etc.).
@@ -56,7 +56,7 @@ inputs:
     default: 'false'
   oci-cache-ref:
     description: >-
-      Optional OCI ref (e.g. ghcr.io/<owner>/bakerish-cache:latest)
+      Optional OCI ref (e.g. ghcr.io/<owner>/snapcompose-cache:latest)
       used as a second-tier cache. When set, this step also installs
       `oras` and — on GH-cache miss — attempts `bake cache --pull
       <oci-cache-ref>` as a fallback. The push side stays in the
@@ -123,7 +123,7 @@ runs:
           macOS)
             # GH macos-* runners have HVF but no qemu pre-installed,
             # and ship Apple's ancient `/bin/bash` 3.2 (pre-GPLv3 cut)
-            # which lacks `mapfile`, used throughout bakeri.sh + rlock.
+            # which lacks `mapfile`, used throughout snapcompose + rlock.
             # `brew install bash` puts Bash 5.x at /opt/homebrew/bin/
             # bash, which #!/usr/bin/env bash shebangs then pick up.
             # Brew install is slow (~1 min) but cached on subsequent runs.
@@ -150,12 +150,12 @@ runs:
             ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -q
         fi
 
-    - name: Install aq / rlock / bakeri.sh from release tarballs
+    - name: Install aq / rlock / snapcompose from release tarballs
       shell: bash
       env:
         AQ_VERSION:     ${{ inputs.aq-version }}
         RLOCK_VERSION:  ${{ inputs.rlock-version }}
-        BAKERI_VERSION: ${{ inputs.bakeri-version }}
+        SNAPCOMPOSE_VERSION: ${{ inputs.snapcompose-version }}
       run: |
         set -e
         # Release tarballs are the GitHub-auto-generated source archives
@@ -176,20 +176,20 @@ runs:
         }
         fetch pirj/aq        "$AQ_VERSION"     "$HOME/aq"
         fetch pirj/rlock     "$RLOCK_VERSION"  "$HOME/rlock"
-        fetch pirj/bakeri.sh "$BAKERI_VERSION" "$HOME/bakeri.sh"
+        fetch pirj/snapcompose "$SNAPCOMPOSE_VERSION" "$HOME/snapcompose"
         # aq's main script is at the repo root, not under bin/.
         chmod +x "$HOME/aq/aq"
 
-    - name: Wire bakeri.sh / rlock / aq into the runner env
+    - name: Wire snapcompose / rlock / aq into the runner env
       shell: bash
       run: |
         set -e
         {
           echo "$HOME/aq"
           echo "$HOME/rlock/bin"
-          echo "$HOME/bakeri.sh/bin"
+          echo "$HOME/snapcompose/bin"
         } >> "$GITHUB_PATH"
-        echo "RLOCK_PLUGIN_PATH=$HOME/bakeri.sh/plugins" >> "$GITHUB_ENV"
+        echo "RLOCK_PLUGIN_PATH=$HOME/snapcompose/plugins" >> "$GITHUB_ENV"
         if [ "${{ inputs.no-snapshot-compress }}" = "true" ]; then
           echo "AQ_NO_SNAPSHOT_COMPRESS=1" >> "$GITHUB_ENV"
         fi
@@ -202,11 +202,11 @@ runs:
         EXTRA_PATHS: ${{ inputs.cache-extra-paths }}
       run: |
         set -e
-        # Built-in cache-key-derivation: hash bakerish.toml + the
+        # Built-in cache-key-derivation: hash snapcompose.toml + the
         # union of common lockfiles + key_files commonly declared in
         # [prebuild.*]. Tunable per project via cache-extra-paths.
         DEFAULT_GLOBS=(
-          'bakerish.toml'
+          'snapcompose.toml'
           '**/Gemfile.lock'
           '**/package-lock.json'
           '**/pnpm-lock.yaml'
@@ -237,7 +237,7 @@ runs:
         echo "key=${PREFIX}-${RUNNER_OS}-${HASH}"          >> "$GITHUB_OUTPUT"
         echo "restore-keys=${PREFIX}-${RUNNER_OS}-"        >> "$GITHUB_OUTPUT"
 
-    - name: Restore + auto-save bakeri.sh layer cache
+    - name: Restore + auto-save snapcompose layer cache
       # actions/cache@v4 (the unified action, not split restore/save)
       # has a built-in post-job step that saves the cache on job end.
       # That's what we want — the cache should reflect WHATEVER the

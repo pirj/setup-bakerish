@@ -1,6 +1,42 @@
 # Changelog
 
-All notable changes to setup-bakerish — one-liner per change.
+All notable changes to setup-snapcompose — one-liner per change.
+
+## v3.0.0 — 2026-05-27 — Renamed from setup-bakerish
+
+**BREAKING CHANGE.** Action renamed in lockstep with the
+`pirj/bakeri.sh` → `pirj/snapcompose` rename.
+
+- Repo: `pirj/setup-bakerish` → `pirj/setup-snapcompose` (GitHub
+  redirects preserve old URLs for now; consumer `uses:` should
+  migrate to the new name).
+- Action name in `action.yml`: `Setup bakeri.sh` → `Setup snapcompose`.
+- Input renamed: `bakeri-version` → `snapcompose-version`.
+- Default `cache-key-prefix` value: `bakeri` → `snapcompose`.
+- Internal env var: `BAKERI_VERSION` → `SNAPCOMPOSE_VERSION`.
+- Default version pins bumped: `aq-version` → `v2.5.37`,
+  `rlock-version` → `v0.1.9`, `snapcompose-version` defaults to
+  the current `pirj/snapcompose` head tag.
+- Docs reference `snapc run` / `snapc cache` instead of
+  `bake run` / `bake cache`.
+
+Migration for existing workflows:
+
+```yaml
+# before
+- uses: pirj/setup-bakerish@v2
+  with:
+    bakeri-version: 'v0.1.2'
+
+# after
+- uses: pirj/setup-snapcompose@v3
+  with:
+    snapcompose-version: 'v0.1.2'
+```
+
+GH's repo-rename redirect keeps `setup-bakerish@v2` working
+until the redirect breaks (typically when a new repo with the
+old name is created). Move to `v3` at the next workflow edit.
 
 ## Unreleased
 
@@ -9,9 +45,9 @@ All notable changes to setup-bakerish — one-liner per change.
   phase — v2.5.13's blkid approach didn't actually work because
   busybox blkid doesn't accept util-linux's query syntax).
 - Bump `rlock-version` default to `v0.1.1` (`rl new --size=NG`
-  flag — used by bakeri.sh's `[disk] size` threading).
-- Bump `bakeri-version` default to `v0.1.2` (`[disk] size` in
-  bakerish.toml overrides the 16G default; docker-engine plugin
+  flag — used by snapcompose's `[disk] size` threading).
+- Bump `snapcompose-version` default to `v0.1.2` (`[disk] size` in
+  snapcompose.toml overrides the 16G default; docker-engine plugin
   adds the `rlock` user to the `docker` group so prebuild
   commands using `docker compose` no longer fail with permission
   denied on /var/run/docker.sock).
@@ -32,7 +68,7 @@ All notable changes to setup-bakerish — one-liner per change.
 Breaking changes vs v1.0.0:
 
 - **Inputs renamed**: `aq-ref` / `rlock-ref` / `bakeri-ref` →
-  `aq-version` / `rlock-version` / `bakeri-version`. Defaults shifted
+  `aq-version` / `rlock-version` / `snapcompose-version`. Defaults shifted
   from `main` (branch) to release tags (`v2.5.7` / `v0.1.0` /
   `v0.1.0`). Pinning to a moving branch is no longer a supported
   default; use explicit release tags.
@@ -48,13 +84,13 @@ Breaking changes vs v1.0.0:
 Initial public release.
 
 ### Composite action
-- One-step install of `aq` + `rlock` + `bakeri.sh` from their respective git repos at pinnable refs.
+- One-step install of `aq` + `rlock` + `snapcompose` from their respective git repos at pinnable refs.
 - Wires `PATH` + `RLOCK_PLUGIN_PATH` via `$GITHUB_PATH` / `$GITHUB_ENV`.
 - Host prereqs: qemu + zstd (apt on Linux, brew on macOS); `oras` added when `oci-cache-ref` is set.
 
 ### Cache choreography
 - `actions/cache@v4` restore + auto-save (post-job step) of `~/.local/share/aq/cache/` + base catalog dirs.
-- Cache key derived from `bakerish.toml` + common lockfiles + db schema + Dockerfile + `docker-compose.*`; tunable via `cache-extra-paths`.
+- Cache key derived from `snapcompose.toml` + common lockfiles + db schema + Dockerfile + `docker-compose.*`; tunable via `cache-extra-paths`.
 - `restore-keys` fallback enables partial restore (the framework re-checks each layer's snapshot_key independently).
 
 ### Two-tier cache (OCI fallback)
