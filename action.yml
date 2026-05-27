@@ -126,19 +126,26 @@ runs:
             # apt's zstd is ≥ 1.5.6.
             ZSTD_VER=1.5.7
             ZSTD_BUILD_ARGS="HAVE_PTHREAD=1"
-            # debug-only knob: build with hand-written BMI2 huffman asm
-            # disabled, isolating whether the LDM/patch-from corruption
-            # we hit on Azure x86_64 KVM lives in lib/decompress/
-            # huf_decompress_amd64.S or somewhere else.
+            ZSTD_BUILD_CFLAGS=""
+            # debug-only knob: aggressively disable hand-written asm AND
+            # x86-64 SIMD/BMI2 intrinsics. Used to isolate where the
+            # Azure-KVM --patch-from corruption (meta/TODO.md known
+            # issues) actually lives:
+            #   ZSTD_NO_ASM=1            — drop lib/decompress/huf_decompress_amd64.S
+            #   -DZSTD_NO_INTRINSICS     — drop all _mm_*/__m128/BMI2 C intrinsics
+            # If the bug still reproduces with both off, it's in plain
+            # C that the compiler vectorized into x86_64 SIMD ops we
+            # didn't gate.
             if [ "${DISABLE_ZSTD_ASM:-false}" = "true" ]; then
               ZSTD_BUILD_ARGS="$ZSTD_BUILD_ARGS ZSTD_NO_ASM=1"
-              echo "[debug] building zstd with ZSTD_NO_ASM=1"
+              ZSTD_BUILD_CFLAGS="-DZSTD_NO_INTRINSICS"
+              echo "[debug] building zstd with ZSTD_NO_ASM=1 and -DZSTD_NO_INTRINSICS"
             fi
             curl -sSL "https://github.com/facebook/zstd/archive/refs/tags/v${ZSTD_VER}.tar.gz" \
               | tar xz -C "$HOME"
-            (cd "$HOME/zstd-${ZSTD_VER}" && make -j zstd $ZSTD_BUILD_ARGS >/dev/null 2>&1)
+            (cd "$HOME/zstd-${ZSTD_VER}" && CFLAGS="-O3 $ZSTD_BUILD_CFLAGS" make -j zstd $ZSTD_BUILD_ARGS >/dev/null 2>&1)
             sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/programs/zstd" /usr/local/bin/zstd
-            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && make -j pzstd $ZSTD_BUILD_ARGS >/dev/null 2>&1) || true
+            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && CFLAGS="-O3 $ZSTD_BUILD_CFLAGS" make -j pzstd $ZSTD_BUILD_ARGS >/dev/null 2>&1) || true
             if [ -f "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" ]; then
               sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" /usr/local/bin/pzstd
             fi
