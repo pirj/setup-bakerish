@@ -2,6 +2,34 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.7 — 2026-05-28 — Pin AQ_CPU=Skylake-Server-v4 on Linux (fix R24 root cause)
+
+R24 internal-error post-incoming-migration was root-caused via the
+diagnostic added in v3.0.6: GH ubuntu-latest runners come from a
+pool that mixes Intel and AMD Azure VMs. aq's default `-cpu host`
+exposes the SAVE host's vendor — if save lands on AMD, CPUID
+advertises SVM, the guest kernel sets EFER.SVME=1, and the
+migration vmstate bakes that bit in. On Intel restore, EFER.SVME
+is reserved-MBZ → first VM-entry fails with VMX_INVALID_GUEST_STATE
+(`hardware error 0x80000021`).
+
+Fix: export `AQ_CPU=Skylake-Server-v4` from setup-snapcompose on
+Linux runners. Skylake-Server-v4 is a stable migratable
+Intel-baseline whose CPUID never exposes SVM → guest never sets
+EFER.SVME → migration works across the Azure pool regardless of
+which SKU we land on. Default `aq-version` bumped to v2.5.44
+(adds the AQ_CPU env override).
+
+The override is wired via `AQ_CPU_DEFAULT` so consumer workflows
+can choose a different stable model (e.g. `AQ_CPU_DEFAULT=EPYC-Milan`
+on AMD-only fleets, or unset for the legacy `host` behaviour).
+
+**Cache compatibility**: snapshots cached under aq < v2.5.44 with
+`-cpu host` have SVME=1 baked into the vmstate. Bump the
+`cache-key-prefix` on the first deployment of v3.0.7 to force a
+cold rebuild, otherwise warm restores load stale state and hit
+the same R24 error.
+
 ## v3.0.6 — 2026-05-28 — Bump aq to v2.5.42 (wider cont retry budget)
 
 - Default `aq-version`: v2.5.41 → v2.5.42. Picks up R23 fix

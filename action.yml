@@ -12,7 +12,7 @@ inputs:
   aq-version:
     description: 'Release tag of pirj/aq to install (e.g. v2.5.23). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.42'
+    default: 'v2.5.44'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
@@ -195,6 +195,23 @@ runs:
         echo "RLOCK_PLUGIN_PATH=$HOME/snapcompose/plugins" >> "$GITHUB_ENV"
         if [ "${{ inputs.no-snapshot-compress }}" = "true" ]; then
           echo "AQ_NO_SNAPSHOT_COMPRESS=1" >> "$GITHUB_ENV"
+        fi
+        # R24 workaround: GH ubuntu-latest runners come from a pool that
+        # mixes Intel and AMD Azure VMs. With aq's default `-cpu host`,
+        # a snapshot taken on an AMD host bakes EFER.SVME=1 (because
+        # CPUID exposed SVM) into the migration vmstate. Restoring that
+        # on an Intel host fails the first KVM_RUN with VMX_INVALID_
+        # GUEST_STATE (`KVM: entry failed, hardware error 0x80000021`)
+        # since IA32_EFER.SVME is reserved-MBZ on Intel.
+        #
+        # Skylake-Server-v4 is a stable migratable Intel-baseline model
+        # whose CPUID never advertises SVM regardless of underlying host
+        # vendor, so the guest never sets EFER.SVME → cross-host warm
+        # restore works regardless of which Azure SKU we land on.
+        # Override via `AQ_CPU` env in your workflow if you need a
+        # different model (or `host` for single-host workflows).
+        if [ "$RUNNER_OS" = Linux ] && [ -z "${AQ_CPU:-}" ]; then
+          echo "AQ_CPU=${AQ_CPU_DEFAULT:-Skylake-Server-v4}" >> "$GITHUB_ENV"
         fi
 
     - name: Compute cache key
