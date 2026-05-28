@@ -2,6 +2,14 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.2 — 2026-05-28 — Bump aq to v2.5.40 (R17 cross-host inject fix)
+
+- Default `aq-version`: v2.5.39 → v2.5.40. Fixes R17 — cross-VM
+  warm restore was failing with "outfile size: 0 bytes" on Azure
+  x86_64 KVM CI runners (now also reproducible locally on M3 via
+  `AQ_HOST_KEY=<different-key>`). See aq's CHANGELOG for the
+  root-cause analysis.
+
 ## v3.0.1 — 2026-05-28 — Drop disable-zstd-asm debug input
 
 - Removed the `disable-zstd-asm` input. It was a debug knob added
