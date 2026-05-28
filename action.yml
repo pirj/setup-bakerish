@@ -16,7 +16,7 @@ inputs:
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
-    default: 'v0.1.10'
+    default: 'v0.1.11'
   snapcompose-version:
     description: 'Release tag of pirj/snapcompose to install (e.g. v0.1.2).'
     required: false
