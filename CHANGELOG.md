@@ -2,6 +2,15 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.3 — 2026-05-28 — Bump aq to v2.5.41 (R20 cross-host migration fix)
+
+- Default `aq-version`: v2.5.40 → v2.5.41. Fixes R20 — warm restore
+  with `AQ_MEMORY_SNAPSHOT=zstd` was hanging in qemu's `inmigrate`
+  state for >60 s on Azure x86_64 KVM (`ubuntu-latest`). The
+  fix decompresses `memory.bin.zst` to disk before launching qemu
+  and uses `-incoming file:` (mmap) instead of `-incoming exec:pzstd`
+  (pipe streaming).
+
 ## v3.0.2 — 2026-05-28 — Bump aq to v2.5.40 (R17 cross-host inject fix)
 
 - Default `aq-version`: v2.5.39 → v2.5.40. Fixes R17 — cross-VM
