@@ -138,14 +138,16 @@ runs:
             # didn't gate.
             if [ "${DISABLE_ZSTD_ASM:-false}" = "true" ]; then
               ZSTD_BUILD_ARGS="$ZSTD_BUILD_ARGS ZSTD_NO_ASM=1"
-              ZSTD_BUILD_CFLAGS="-DZSTD_NO_INTRINSICS"
-              echo "[debug] building zstd with ZSTD_NO_ASM=1 and -DZSTD_NO_INTRINSICS"
+              ZSTD_BUILD_CFLAGS="-DZSTD_NO_INTRINSICS -O0 -fno-tree-vectorize"
+              echo "[debug] building zstd with ZSTD_NO_ASM=1, -DZSTD_NO_INTRINSICS, -O0, -fno-tree-vectorize"
             fi
             curl -sSL "https://github.com/facebook/zstd/archive/refs/tags/v${ZSTD_VER}.tar.gz" \
               | tar xz -C "$HOME"
-            (cd "$HOME/zstd-${ZSTD_VER}" && CFLAGS="-O3 $ZSTD_BUILD_CFLAGS" make -j zstd $ZSTD_BUILD_ARGS >/dev/null 2>&1)
+            ZSTD_CFLAGS_BASE="-O3"
+            [ -n "$ZSTD_BUILD_CFLAGS" ] && ZSTD_CFLAGS_BASE="$ZSTD_BUILD_CFLAGS"
+            (cd "$HOME/zstd-${ZSTD_VER}" && CFLAGS="$ZSTD_CFLAGS_BASE" make -j zstd $ZSTD_BUILD_ARGS >/dev/null 2>&1)
             sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/programs/zstd" /usr/local/bin/zstd
-            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && CFLAGS="-O3 $ZSTD_BUILD_CFLAGS" make -j pzstd $ZSTD_BUILD_ARGS >/dev/null 2>&1) || true
+            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && CFLAGS="$ZSTD_CFLAGS_BASE" make -j pzstd $ZSTD_BUILD_ARGS >/dev/null 2>&1) || true
             if [ -f "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" ]; then
               sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" /usr/local/bin/pzstd
             fi
