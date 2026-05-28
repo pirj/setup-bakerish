@@ -2,6 +2,25 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.4 — 2026-05-28 — Stable cached host SSH key (skips cross-host inject)
+
+Generate an ed25519 keypair once at cold time, cache it alongside
+the snapshot layers, restore on every warm runner. Every runner
+(potentially a different Azure VM) now uses the SAME `AQ_HOST_KEY`,
+so aq's probe-first SSH check succeeds immediately on warm restore
+and skips the cross-host serial-inject phase entirely (saves
+~1.2 s per warm-zstd / warm-zstd-patch invocation on `ubuntu-latest`).
+
+Net effect on the benchmark-r17-r18 fixture: WARM_ZSTD wall-clock
+~10 s → ~8.7 s, WARM_ZSTD_PATCH ~17 s → ~15.7 s.
+
+The shared key lives at
+`~/.local/share/aq/setup-snapcompose/host-id_ed25519`, is scoped
+per-cache-key, and is regenerated on cold rebuild. Not a
+long-lived cross-project secret. The previously-generated
+`~/.ssh/id_ed25519` fallback (per-job, ephemeral) is dropped; aq
+picks up `AQ_HOST_KEY` from the env var instead.
+
 ## v3.0.3 — 2026-05-28 — Bump aq to v2.5.41 (R20 cross-host migration fix)
 
 - Default `aq-version`: v2.5.40 → v2.5.41. Fixes R20 — warm restore

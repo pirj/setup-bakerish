@@ -152,18 +152,6 @@ runs:
             ;;
         esac
 
-    - name: Ensure an SSH key exists for aq's base-image bootstrap
-      shell: bash
-      run: |
-        # aq's base-build path reads $HOME/.ssh/*.pub and bakes it into
-        # the Alpine ISO's setup.conf as the guest user's
-        # authorized_keys. GH runners ship without ~/.ssh, so generate
-        # an ephemeral ed25519 key if none exists. The key is per-job
-        # (runner is destroyed at job end); not a long-lived secret.
-        if [ ! -d "$HOME/.ssh" ] || ! ls "$HOME/.ssh"/*.pub >/dev/null 2>&1; then
-            mkdir -p "$HOME/.ssh"
-            ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -q
-        fi
 
     - name: Install aq / rlock / snapcompose from release tarballs
       shell: bash
@@ -264,6 +252,13 @@ runs:
       # `cache-restore-only=true` switches to actions/cache/restore@v4
       # (no save) for jobs that explicitly don't want to populate the
       # cache (e.g. PR builds against ephemeral branches).
+      #
+      # The `~/.local/share/aq/setup-snapcompose/` path holds a stable
+      # ed25519 keypair shared across cold + every warm runner that
+      # restores this cache (see step below). Caching it alongside the
+      # snapshot layers is what lets cross-host warm restore use aq's
+      # probe-first SSH short-circuit and skip the ~1.2 s serial-inject
+      # phase (R17 path).
       uses: actions/cache@v4
       if: inputs.cache-restore-only != 'true'
       with:
@@ -271,6 +266,7 @@ runs:
           ~/.local/share/aq/cache
           ~/.local/share/aq/x86_64
           ~/.local/share/aq/aarch64
+          ~/.local/share/aq/setup-snapcompose
         key: ${{ steps.cache-key.outputs.key }}
         restore-keys: ${{ steps.cache-key.outputs.restore-keys }}
 
@@ -283,8 +279,35 @@ runs:
           ~/.local/share/aq/cache
           ~/.local/share/aq/x86_64
           ~/.local/share/aq/aarch64
+          ~/.local/share/aq/setup-snapcompose
         key: ${{ steps.cache-key.outputs.key }}
         restore-keys: ${{ steps.cache-key.outputs.restore-keys }}
+
+    - name: Stable host SSH key (cached → probe-first skips inject)
+      shell: bash
+      run: |
+        # Generate once at cold time, cache alongside the snapshot
+        # layers, restore on every warm runner. aq's base-build path
+        # reads $AQ_HOST_KEY.pub and bakes it into the Alpine ISO's
+        # setup.conf as the guest user's authorized_keys. Every
+        # warm runner (potentially a different Azure VM) uses the
+        # SAME keypair, so aq's probe-first SSH check succeeds
+        # immediately on warm restore and we skip the cross-host
+        # serial-inject path (saves ~1.2 s per warm).
+        #
+        # The key is per-cache-key (different snapcompose.toml hashes
+        # produce different caches → different keys). Not a long-lived
+        # cross-project secret. If the cache evicts and a new cold
+        # build runs, a fresh key is generated and baked.
+        KEY_DIR="$HOME/.local/share/aq/setup-snapcompose"
+        mkdir -p "$KEY_DIR"
+        KEY="$KEY_DIR/host-id_ed25519"
+        if [ ! -f "$KEY" ] || [ ! -f "$KEY.pub" ]; then
+          ssh-keygen -t ed25519 -N '' -f "$KEY" -C 'setup-snapcompose-shared-host-key' -q
+        fi
+        chmod 600 "$KEY"
+        chmod 644 "$KEY.pub"
+        echo "AQ_HOST_KEY=$KEY" >> "$GITHUB_ENV"
 
     - name: OCI fallback pull (on GH-cache miss + oci-cache-ref set)
       shell: bash
