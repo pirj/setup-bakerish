@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.0.6 — 2026-05-28 — Bump aq to v2.5.42 (wider cont retry budget)
+
+- Default `aq-version`: v2.5.41 → v2.5.42. Picks up R23 fix.
+
 All notable changes to setup-snapcompose — one-liner per change.
 
 ## v3.0.5 — 2026-05-28 — Symlink shared key to ~/.ssh for plain-ssh callers
