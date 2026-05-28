@@ -12,11 +12,11 @@ inputs:
   aq-version:
     description: 'Release tag of pirj/aq to install (e.g. v2.5.23). Download is via release tarball — must match an existing GH Release.'
     required: false
-    default: 'v2.5.38'
+    default: 'v2.5.39'
   rlock-version:
     description: 'Release tag of pirj/rlock to install (e.g. v0.1.3).'
     required: false
-    default: 'v0.1.11'
+    default: 'v0.1.12'
   snapcompose-version:
     description: 'Release tag of pirj/snapcompose to install (e.g. v0.1.2).'
     required: false
@@ -64,16 +64,6 @@ inputs:
       calls `bake cache --push`).
     required: false
     default: ''
-  disable-zstd-asm:
-    description: >-
-      Debug-only. Set to `'true'` to build the bundled zstd with
-      ZSTD_NO_ASM=1 (disables the hand-written x86_64 BMI2 Huffman
-      asm in lib/decompress/huf_decompress_amd64.S; the decoder
-      falls back to the C scalar path). Useful to isolate whether
-      an x86_64-native --patch-from corruption (issue tracked in
-      meta/TODO.md) lives in that asm file.
-    required: false
-    default: 'false'
 
 runs:
   using: composite
@@ -82,7 +72,6 @@ runs:
       shell: bash
       env:
         OCI_REF: ${{ inputs.oci-cache-ref }}
-        DISABLE_ZSTD_ASM: ${{ inputs.disable-zstd-asm }}
       run: |
         set -e
         case "$RUNNER_OS" in
@@ -125,29 +114,11 @@ runs:
             # Drop this when ubuntu-26 ships in GH runner images and
             # apt's zstd is ≥ 1.5.6.
             ZSTD_VER=1.5.7
-            ZSTD_BUILD_ARGS="HAVE_PTHREAD=1"
-            ZSTD_BUILD_CFLAGS=""
-            # debug-only knob: aggressively disable hand-written asm AND
-            # x86-64 SIMD/BMI2 intrinsics. Used to isolate where the
-            # Azure-KVM --patch-from corruption (meta/TODO.md known
-            # issues) actually lives:
-            #   ZSTD_NO_ASM=1            — drop lib/decompress/huf_decompress_amd64.S
-            #   -DZSTD_NO_INTRINSICS     — drop all _mm_*/__m128/BMI2 C intrinsics
-            # If the bug still reproduces with both off, it's in plain
-            # C that the compiler vectorized into x86_64 SIMD ops we
-            # didn't gate.
-            if [ "${DISABLE_ZSTD_ASM:-false}" = "true" ]; then
-              ZSTD_BUILD_ARGS="$ZSTD_BUILD_ARGS ZSTD_NO_ASM=1"
-              ZSTD_BUILD_CFLAGS="-DZSTD_NO_INTRINSICS -O0 -fno-tree-vectorize"
-              echo "[debug] building zstd with ZSTD_NO_ASM=1, -DZSTD_NO_INTRINSICS, -O0, -fno-tree-vectorize"
-            fi
             curl -sSL "https://github.com/facebook/zstd/archive/refs/tags/v${ZSTD_VER}.tar.gz" \
               | tar xz -C "$HOME"
-            ZSTD_CFLAGS_BASE="-O3"
-            [ -n "$ZSTD_BUILD_CFLAGS" ] && ZSTD_CFLAGS_BASE="$ZSTD_BUILD_CFLAGS"
-            (cd "$HOME/zstd-${ZSTD_VER}" && CFLAGS="$ZSTD_CFLAGS_BASE" make -j zstd $ZSTD_BUILD_ARGS >/dev/null 2>&1)
+            (cd "$HOME/zstd-${ZSTD_VER}" && CFLAGS="-O3" make -j zstd HAVE_PTHREAD=1 >/dev/null 2>&1)
             sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/programs/zstd" /usr/local/bin/zstd
-            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && CFLAGS="$ZSTD_CFLAGS_BASE" make -j pzstd $ZSTD_BUILD_ARGS >/dev/null 2>&1) || true
+            (cd "$HOME/zstd-${ZSTD_VER}/contrib/pzstd" && CFLAGS="-O3" make -j pzstd HAVE_PTHREAD=1 >/dev/null 2>&1) || true
             if [ -f "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" ]; then
               sudo install -m 0755 "$HOME/zstd-${ZSTD_VER}/contrib/pzstd/pzstd" /usr/local/bin/pzstd
             fi

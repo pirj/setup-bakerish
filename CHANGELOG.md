@@ -2,6 +2,18 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.1 — 2026-05-28 — Drop disable-zstd-asm debug input
+
+- Removed the `disable-zstd-asm` input. It was a debug knob added
+  during the R18 zstd-patch investigation to isolate whether the
+  failure lived in zstd's x86_64 BMI2/intrinsics path. Root cause
+  turned out to be in rlock's chain-reconstruction logic, not in
+  zstd — so the build flag (`ZSTD_NO_ASM=1`, `-DZSTD_NO_INTRINSICS`,
+  `-O0 -fno-tree-vectorize`) and the surrounding plumbing are no
+  longer needed.
+- Default `aq-version` bumped to `v2.5.39` and `rlock-version`
+  bumped to `v0.1.12` (both ship the same instrumentation cleanup).
+
 ## v3.0.0 — 2026-05-27 — Renamed from setup-bakerish
 
 **BREAKING CHANGE.** Action renamed in lockstep with the
