@@ -299,6 +299,14 @@ runs:
         # produce different caches → different keys). Not a long-lived
         # cross-project secret. If the cache evicts and a new cold
         # build runs, a fresh key is generated and baked.
+        #
+        # We ALSO symlink the key into $HOME/.ssh/id_ed25519 because
+        # rlock's lib/util.sh (do_ssh, wait_for_ssh) calls plain
+        # `ssh` without honoring AQ_HOST_KEY — those invocations need
+        # the key at the default discovery path. Caching the key
+        # under ~/.local/share/aq keeps the source-of-truth in a
+        # known cacheable location; the ~/.ssh symlink is the
+        # discoverable view.
         KEY_DIR="$HOME/.local/share/aq/setup-snapcompose"
         mkdir -p "$KEY_DIR"
         KEY="$KEY_DIR/host-id_ed25519"
@@ -307,6 +315,15 @@ runs:
         fi
         chmod 600 "$KEY"
         chmod 644 "$KEY.pub"
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+        # Use symlinks so `ssh` discovers the same key (rlock's
+        # lib/util.sh ssh calls don't use -i). If the user already
+        # has an ssh key at the default path, don't clobber it.
+        if [ ! -e "$HOME/.ssh/id_ed25519" ]; then
+          ln -sf "$KEY" "$HOME/.ssh/id_ed25519"
+          ln -sf "$KEY.pub" "$HOME/.ssh/id_ed25519.pub"
+        fi
         echo "AQ_HOST_KEY=$KEY" >> "$GITHUB_ENV"
 
     - name: OCI fallback pull (on GH-cache miss + oci-cache-ref set)

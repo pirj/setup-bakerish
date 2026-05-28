@@ -2,6 +2,16 @@
 
 All notable changes to setup-snapcompose — one-liner per change.
 
+## v3.0.5 — 2026-05-28 — Symlink shared key to ~/.ssh for plain-ssh callers
+
+v3.0.4 set `AQ_HOST_KEY` but rlock's `lib/util.sh` (do_ssh, wait_for_ssh)
+calls plain `ssh` without `-i`, so those invocations didn't see the
+shared key and hung at SSH auth time on cold rebuild. Fix: symlink the
+cached key into `$HOME/.ssh/id_ed25519` so default-discovery `ssh`
+finds the same key as AQ_HOST_KEY-aware aq calls. CI run 26572066218
+showed cold-zstd / cold-zstd-patch both hanging at the first plugin
+SSH invocation for 62 s before exit 1 — the symptom this fixes.
+
 ## v3.0.4 — 2026-05-28 — Stable cached host SSH key (skips cross-host inject)
 
 Generate an ed25519 keypair once at cold time, cache it alongside
